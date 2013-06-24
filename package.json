@@ -1,0 +1,22 @@
+{
+  "name": "soundbank",
+  "version": "0.0.0",
+  "description": "Web Audio API based sample player with basic editing",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mmckegg/soundbank.git"
+  },
+  "keywords": [
+    "sampler",
+    "web audio"
+  ],
+  "author": "Matt McKegg",
+  "license": "MIT",
+  "dependencies": {
+
+  }
+}
