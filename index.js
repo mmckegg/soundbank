@@ -91,7 +91,7 @@ module.exports = function(audioContext){
   masterNode.refresh = function(id){
     var sound = sounds[id]
     var player = active[id]
-    var envelope = active[id]
+    var envelope = activeEnvelopes[id]
     if (player){
       var offset = sound.offsetStart || 0
       var length = Math.max(0, sound.buffer.duration - offset - (sound.offsetEnd || 0))
@@ -107,7 +107,7 @@ module.exports = function(audioContext){
         player.loop = false
       }
       if (sound.gain){
-        envelope.gain.value = sound.gain
+        player.gain.value = sound.gain != null ? sound.gain : 1
       }
     }
   }
@@ -142,11 +142,14 @@ module.exports = function(audioContext){
       var attack = sound.attack || 0.01
       var release = sound.release || 0.01
       var gain = sound.gain != null ? sound.gain : 1
+
+      player.gain.value = gain
+
       var envelope = audioContext.createGain()
       envelope.gain.setValueAtTime(0, time())
-      envelope.gain.linearRampToValueAtTime(gain, time(attack))
+      envelope.gain.linearRampToValueAtTime(1, time(attack))
       if (sound.mode !== 'loop'){
-        envelope.gain.setValueAtTime(gain, time(length-0.01))
+        envelope.gain.setValueAtTime(1, time(length-0.01))
         envelope.gain.linearRampToValueAtTime(0, time(length))
       }
       envelope.connect(masterNode)
