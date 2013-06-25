@@ -24,9 +24,10 @@ module.exports = function(audioContext){
   }
 
   masterNode.addSound = function(id, sound){
-    // should probably clone sound at this point
-    sound.soundbank = masterNode
-    sound.id = id
+    var sound = mergeClone(sound, {
+      soundbank: masterNode,
+      id: id
+    })
     sounds[id] = sound
     masterNode.events.emit('change', id)
     return sound
@@ -148,4 +149,17 @@ module.exports = function(audioContext){
   }
 
   return masterNode
+}
+
+function mergeClone(){
+  var result = {}
+  for (var i=0;i<arguments.length;i++){
+    var obj = arguments[i]
+    if (obj){
+      Object.keys(obj).forEach(function(key){
+        result[key] = obj[key]
+      })
+    }
+  }
+  return result
 }
