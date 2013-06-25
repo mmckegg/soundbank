@@ -33,8 +33,27 @@ module.exports = function(audioContext){
     return sound
   }
 
+  masterNode.removeSound = function(id){
+    var sound = sounds[id]
+    sound.soundbank = null
+    sound.id = null
+    sounds[id] = null
+    masterNode.events.emit('change', id)
+    return sound
+  }
+
   masterNode.getSound = function(id){
     return sounds[id]
+  }
+
+  masterNode.getSounds = function(id){
+    var result = []
+    Object.keys(sounds).forEach(function(id){
+      if (sounds[id]){
+        result.push(sounds[id])
+      }
+    })
+    return result
   }
 
   masterNode.choke = function(id, release){
