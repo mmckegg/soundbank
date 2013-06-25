@@ -1,6 +1,10 @@
+var EventEmitter = require('events').EventEmitter
+
 module.exports = function(audioContext){
 
   var masterNode = audioContext.createGain()
+  masterNode.events = new EventEmitter()
+
   var sounds = {}
 
   var activeEnvelopes = {}
@@ -15,11 +19,16 @@ module.exports = function(audioContext){
     }
   }
 
+  masterNode.on = function(event, cb){
+    return masterNode.events.on(event, cb)
+  }
+
   masterNode.addSound = function(id, sound){
     // should probably clone sound at this point
     sound.soundbank = masterNode
     sound.id = id
     sounds[id] = sound
+    masterNode.events.emit('change', id)
     return sound
   }
 
