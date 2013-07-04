@@ -11,13 +11,6 @@ module.exports = function(audioContext){
   var active = {}
   var groupActive = {}
 
-  function time(plus){
-    if (plus){
-      return audioContext.currentTime + plus
-    } else {
-      return audioContext.currentTime
-    }
-  }
 
   masterNode.on = function(event, cb){
     return masterNode.events.on(event, cb)
@@ -46,7 +39,7 @@ module.exports = function(audioContext){
     return sounds[id]
   }
 
-  masterNode.getSounds = function(id){
+  masterNode.getSounds = function(){
     var result = []
     Object.keys(sounds).forEach(function(id){
       if (sounds[id]){
@@ -56,35 +49,39 @@ module.exports = function(audioContext){
     return result
   }
 
-  masterNode.choke = function(id, release){
+  masterNode.choke = function(at, id, release){
+    at = at || audioContext.currentTime
+
     release = release || 0.01
     var player = active[id]
     var envelope = activeEnvelopes[id]
     if (player){
       if (player.playbackState !== player.FINISHED_STATE){
-        envelope.gain.setValueAtTime(envelope.gain.value, time())
-        envelope.gain.linearRampToValueAtTime(0, time(release))
-        player.stop(time(release))
+        envelope.gain.setValueAtTime(envelope.gain.value, at)
+        envelope.gain.linearRampToValueAtTime(0, at+release)
+        player.stop(at+release)
       }
       active[id] = null
       activeEnvelopes[id] = null
     }
   }
 
-  masterNode.chokeGroup = function(groupId){
+  masterNode.chokeGroup = function(at, groupId){
+    at = at || audioContext.currentTime
+
     var activeId = groupActive[groupId]
     if (activeId){
-      masterNode.choke(activeId)
+      masterNode.choke(at, activeId)
       groupActive[groupId] = null
     }
   }
 
   window.offsetTime = 0
 
-  masterNode.triggerOff = function(id){
+  masterNode.triggerOff = function(at, id){
     var sound = sounds[id]
     if (sound && (sound.mode === 'hold' || sound.mode === 'loop')){
-      masterNode.choke(id, sound.release)
+      masterNode.choke(at, id, sound.release)
     }
   }
 
@@ -112,7 +109,9 @@ module.exports = function(audioContext){
     }
   }
 
-  masterNode.trigger = function(id){
+  masterNode.trigger = function(at, id){
+    at = at || audioContext.currentTime
+
     var sound = sounds[id]
     if (sound){
 
@@ -146,20 +145,21 @@ module.exports = function(audioContext){
       player.gain.value = gain
 
       var envelope = audioContext.createGain()
-      envelope.gain.setValueAtTime(0, time())
-      envelope.gain.linearRampToValueAtTime(1, time(attack))
+      envelope.gain.setValueAtTime(0, at)
+      envelope.gain.linearRampToValueAtTime(1, at+attack)
       if (sound.mode !== 'loop'){
-        envelope.gain.setValueAtTime(1, time(length-0.01))
-        envelope.gain.linearRampToValueAtTime(0, time(length))
+        envelope.gain.setValueAtTime(1, at+length-0.01)
+        envelope.gain.linearRampToValueAtTime(0, at+length)
+      }
       }
       envelope.connect(masterNode)
 
       // output
       player.connect(envelope)
-      player.start(0, offset, length)
+      player.start(at, offset, length)
 
       // sound choke
-      masterNode.choke(id)
+      masterNode.choke(at, id)
       if (sound.chokeGroup){
         masterNode.chokeGroup(sound.chokeGroup)
         groupActive[sound.chokeGroup] = id
