@@ -6,6 +6,7 @@ module.exports = function(audioContext){
   masterNode.events = new EventEmitter()
 
   var sounds = {}
+  var busses = {}
 
   var activeEnvelopes = {}
   var active = {}
@@ -24,6 +25,17 @@ module.exports = function(audioContext){
     sounds[id] = sound
     masterNode.events.emit('change', id)
     return sound
+  }
+
+
+  masterNode.addBus = function(id, bus){
+    busses[id] = mergeClone(bus, {
+      id: id,
+      soundbank: masterNode
+    })
+    if (bus.output){
+      bus.output.connect(masterNode)
+    }
   }
 
   masterNode.removeSound = function(id){
@@ -48,6 +60,17 @@ module.exports = function(audioContext){
     })
     return result
   }
+
+  masterNode.getBusses = function(){
+    var result = []
+    Object.keys(busses).forEach(function(id){
+      if (busses[id]){
+        result.push(busses[id])
+      }
+    })
+    return result
+  }
+
 
   masterNode.choke = function(at, id, release){
     at = at || audioContext.currentTime
@@ -151,8 +174,14 @@ module.exports = function(audioContext){
         envelope.gain.setValueAtTime(1, at+length-0.01)
         envelope.gain.linearRampToValueAtTime(0, at+length)
       }
+
+      var bus = busses[sound.busId]
+
+      if (bus && bus.input){
+        envelope.connect(bus.input)
+      } else {
+        envelope.connect(masterNode)
       }
-      envelope.connect(masterNode)
 
       // output
       player.connect(envelope)
