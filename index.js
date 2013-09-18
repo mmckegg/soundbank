@@ -1,9 +1,45 @@
 var EventEmitter = require('events').EventEmitter
+var Through = require('through')
 
 module.exports = function(audioContext){
 
   var masterNode = audioContext.createGain()
-  masterNode.events = new EventEmitter()
+
+  var changeStreams = []
+
+  var stream = Through(function(event){
+    if (Array.isArray(event)){
+      event = {
+        time: audioContext.currentTime,
+        data: event
+      }
+    }
+
+    if (event.data[2]){
+      masterNode.trigger(event.time, event.data[1])
+    } else {
+      masterNode.triggerOff(event.time, event.data[1])
+    }
+
+    this.queue(event)
+  })
+
+  applyStream(masterNode, stream)
+
+  masterNode.getChangeStream = function(){
+    var changeStream = Through(function(change){
+
+    })
+    changeStreams.push(changeStream)
+    return changeStream
+  }
+
+  function broadcastChange(change){
+    changeStreams.forEach(function(changeStream){
+      changeStream.write(change)
+    })
+    masterNode.emit('change', change.id)
+  }
 
   var sounds = {}
   var busses = {}
@@ -12,9 +48,12 @@ module.exports = function(audioContext){
   var active = {}
   var groupActive = {}
 
-
-  masterNode.on = function(event, cb){
-    return masterNode.events.on(event, cb)
+  masterNode.clear = function(){
+    var changedSounds = Object.keys(sounds)
+    sounds = {}
+    changedSounds.forEach(function(key){
+      masterNode.emit('change', key)
+    })
   }
 
   masterNode.addSound = function(id, sound){
@@ -23,7 +62,7 @@ module.exports = function(audioContext){
       id: id
     })
     sounds[id] = sound
-    masterNode.events.emit('change', id)
+    broadcastChange(sound)
     return sound
   }
 
@@ -43,7 +82,8 @@ module.exports = function(audioContext){
     sound.soundbank = null
     sound.id = null
     sounds[id] = null
-    masterNode.events.emit('change', id)
+
+    broadcastChange({id: id})
     return sound
   }
 
@@ -91,7 +131,6 @@ module.exports = function(audioContext){
 
   masterNode.chokeGroup = function(at, groupId){
     at = at || audioContext.currentTime
-
     var activeId = groupActive[groupId]
     if (activeId){
       masterNode.choke(at, activeId)
@@ -190,7 +229,7 @@ module.exports = function(audioContext){
       // sound choke
       masterNode.choke(at, id)
       if (sound.chokeGroup){
-        masterNode.chokeGroup(sound.chokeGroup)
+        masterNode.chokeGroup(at, sound.chokeGroup)
         groupActive[sound.chokeGroup] = id
       }
 
@@ -213,4 +252,18 @@ function mergeClone(){
     }
   }
   return result
+}
+
+function applyStream(object, stream){
+  var proxyFuncs = ['emit', 'pipe', 'write', 'on']
+  object.stream = stream
+
+  object.writable = stream.writable
+  object.readable = stream.readable
+
+  proxyFuncs.forEach(function(func){
+    object[func] = function(){
+      return stream[func].apply(stream, arguments)
+    }
+  })
 }
