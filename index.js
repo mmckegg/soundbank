@@ -4,6 +4,8 @@ var ChangeStream = require('./lib/change_stream')
 var applyStream = require('./lib/apply_stream')
 var mergeInto = require('./lib/merge_into')
 
+var loadSample = require('./lib/load_sample')
+
 ////////////////////////////////////////////////
 
 
@@ -90,6 +92,13 @@ module.exports = function(audioContext){
     }
   }
 
+  soundbank.loadSample = function(url, cb){
+    var sampleCache = audioContext.sampleCache = audioContext.sampleCache || {}
+    loadSample(url, audioContext, function(err, audioData){
+      sampleCache[url] = audioData
+      cb&&cb(err, audioData)
+    })
+  }
 
   return soundbank
 }
