@@ -8,16 +8,16 @@ var sources = {
 module.exports = function(audioContext, sound, at){
   var player = audioContext.createGain()
 
-  player.gain.value = sound.gain || 1
+  player.gain.value = sound.gain != null ? sound.gain : 1
 
   player.envelope = Envelope(audioContext, sound.envelope, at)
   player.envelope.connect(player)
 
   if (sound.source && sources[sound.source.type]){
     player.source = sources[sound.source.type](audioContext, sound.source, at)
-    if (player.source.mode == 'oneshot'){
+    if (player.source.maxLength){
       var release = player.envelope.release || 0
-      player.envelope.stop(at + player.source.length - release)
+      player.envelope.stop(at + player.source.maxLength - release)
     }
     player.source.connect(player.envelope)
   }
@@ -41,7 +41,7 @@ function choke(at){
 }
 
 function stop(at){
-  if (this.source && this.envelope && this.source.mode !== 'oneshot' && this.source.playbackState !== this.source.FINISHED_STATE){
+  if (this.source && this.envelope && !this.source.oneshot && this.source.playbackState !== this.source.FINISHED_STATE){
     var release = this.envelope.release || 0
     this.envelope.stop(at)
     this.source.stop(at+release)

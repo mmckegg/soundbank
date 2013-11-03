@@ -23,32 +23,30 @@ module.exports = function(audioContext, source, at){
     start = offset[1] * player.buffer.duration
     end = offset[0] * player.buffer.duration
   }
-  
-  player.length = Math.max(0, end - start)
 
   // loop
   if (source.mode === 'loop'){
     player.loop = true
     player.loopStart = start
-    player.loopEnd = start + player.length
+    player.loopEnd = end
+  } else {
+    player.maxLength = Math.min(player.buffer.duration, end - start) 
   }
 
-  if (source.mode === 'oneshot'){
-    player.mode = 'oneshot'
+  if (source.mode == 'oneshot'){
+    player.oneshot = true
   }
 
   // transpose
   if (source.transpose){
     var rateChange = Math.pow(2, source.transpose / 12)
     player.playbackRate.value = rateChange * baseRate
-    player.length = player.length / rateChange
+    player.maxLength = player.maxLength / rateChange
   }
 
-  player.start(at, start, player.length)
+  player.start(at, start, player.maxLength || player.buffer.duration)
   return player
 }
-
-
 
 module.exports.prime = function(audioContext, source, cb){
   var sampleCache = audioContext.sampleCache = audioContext.sampleCache || {}
@@ -58,6 +56,7 @@ module.exports.prime = function(audioContext, source, cb){
     sampleCache[source.url] = true // mark to show loading
     loadSample(source.url, audioContext, function(err, audioData){
       sampleCache[source.url] = audioData
+      cb&&cb()
     })
   }
 }
