@@ -2,10 +2,33 @@ var Envelope = require('./lib/envelope')
 
 var sources = {
   'sample': require('./sources/sample'),
-  'oscillator': require('./sources/oscillator')
+  'oscillator': require('./sources/oscillator'),
+  'multi': function(audioContext, source, at){
+    // source: pitch, shape
+    var multi = audioContext.createGain()
+
+    multi.players = []
+
+    source.sounds && source.sounds.forEach(function(sound){
+      var player = Sound(audioContext, sound, at)
+      player.connect(multi)
+      multi.players.push(player)
+    })
+
+    multi.stop = stopMulti
+    multi.choke = chokeMulti
+
+    return multi
+  }
 }
 
-module.exports = function(audioContext, sound, at){
+sources.multi.prime = function(audioContext, sound, cb){
+  sound.sounds && forEach(sound.sounds, function(s, next){
+    Sound.prime(audioContext, s, next)
+  }, cb)
+}
+
+var Sound = module.exports = function(audioContext, sound, at){
   var player = audioContext.createGain()
 
   player.gain.value = sound.gain != null ? sound.gain : 1
@@ -41,9 +64,38 @@ function choke(at){
 }
 
 function stop(at){
-  if (this.source && this.envelope && !this.source.oneshot && this.source.playbackState !== this.source.FINISHED_STATE){
-    var release = this.envelope.release || 0
-    this.envelope.stop(at)
-    this.source.stop(at+release)
+  if (this.source && this.envelope && !this.source.oneshot){
+    if (!this.source.playbackState || this.source.playbackState !== this.source.FINISHED_STATE){
+      var release = this.envelope.release || 0
+      this.envelope.stop(at)
+      this.source.stop(at+release)
+    }
   }
+}
+
+function stopMulti(at){
+  console.log('stop multi')
+  this.players.forEach(function(player){
+    player.stop(at)
+  })
+}
+
+function chokeMulti(at){
+  this.players.forEach(function(player){
+    player.choke(at)
+  })
+}
+
+function forEach(array, fn, cb){
+  var i = -1
+  function next(err){
+    if (err) return cb&&cb(err)
+    i += 1
+    if (i<array.length){
+      fn(array[i], next, i)
+    } else {
+      cb&&cb(null)
+    }
+  }
+  next()
 }
