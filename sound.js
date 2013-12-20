@@ -59,7 +59,10 @@ module.exports.prime = function(audioContext, sound, cb){
 
 function choke(at){
   if (this.envelope && this.source && this.source.playbackState !== this.source.FINISHED_STATE){
-    this.source.stop(at+0.01)
+    if (!this.stopped){
+      this.source.stop(at+0.01)
+      this.stopped = true
+    }
   }
 }
 
@@ -67,8 +70,11 @@ function stop(at){
   if (this.source && this.envelope && !this.source.oneshot){
     if (!this.source.playbackState || this.source.playbackState !== this.source.FINISHED_STATE){
       var release = this.envelope.release || 0
-      this.envelope.stop(at)
-      this.source.stop(at+release)
+      if (!this.stopped){
+        this.envelope.stop(at)
+        this.source.stop(at+release)
+        this.stopped = true
+      }
     }
   }
 }
