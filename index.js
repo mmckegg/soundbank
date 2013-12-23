@@ -21,6 +21,7 @@ module.exports = function(audioContext){
   }
 
   audioContext.sources['oscillator'] = require('./sources/oscillator')
+  audioContext.sources['sample'] = require('./sources/sample')
 
   var soundbank = audioContext.createGain()
 
