@@ -1,5 +1,6 @@
-var Sound = require('./sound')
+var Slot = require('./slot')
 var ChangeStream = require('./lib/change_stream')
+var ActiveList = require('./lib/active_list')
 
 var applyStream = require('./lib/apply_stream')
 var mergeInto = require('./lib/merge_into')
@@ -11,12 +12,20 @@ var loadSample = require('./lib/load_sample')
 
 module.exports = function(audioContext){
 
+  if (!audioContext.sources){
+    audioContext.sources = {}
+  }
+
+  if (!audioContext.processors){
+    audioContext.processors = {}
+  }
+
+
   var soundbank = audioContext.createGain()
 
-  var activeSounds = ActiveList()
   var activeGroups = ActiveList()
 
-  var sounds = {}
+  var slots = {}
 
   applyStream(soundbank, function(event){
 
@@ -40,56 +49,62 @@ module.exports = function(audioContext){
     return ChangeStream(soundbank)
   }
 
-  soundbank.update = function(sound){
-    Sound.prime(audioContext, sound)
-    var currentSound = sounds[sound.id]
-    if (currentSound){
-      mergeInto(currentSound, sound)
-    } else {
-      sounds[sound.id] = sound
+  soundbank.update = function(descriptor){
+    var oldDescriptor = {}
+    var slot = slots[descriptor.id]
+
+    if (slot){ // update slot
+      oldDescriptor = slot.descriptor
+      slot.update(descriptor)
+
+      if (oldDescriptor.output != descriptor.output){
+        setOutput(audioContext, slot, descriptor, slots)
+      }
+
+    } else { // create slot
+      slot = slots[descriptor.id] = Slot(audioContext, descriptor)
+      slot.connect(audioContext.destination)
+      setOutput(audioContext, slot, descriptor, slots)
     }
-    soundbank.emit('change', sounds[sound.id])
+
+    soundbank.emit('change', descriptor)
   }
 
-  soundbank.getSounds = function(){
-    return Object.keys(sounds).map(function(id){
-      return sounds[id]
+  soundbank.getDescriptors = function(){
+    return Object.keys(slots).map(function(id){
+      return slots[id].descriptor
     })
   }
 
   soundbank.triggerOn = function(id, at){
     soundbank.choke(id, at)
 
-    var sound = sounds[id]
-    if (sound){
-      var player = Sound(audioContext, sound, at)
-      player.connect(soundbank)
-      activeSounds.set(id, player, at)
+    var slot = slots[id]
+    if (slot){
+      slot.triggerOn(at)
 
-      if (sound.chokeGroup){
-        activeGroups.set(sound.chokeGroup, player, at)
+      if (slot.chokeGroup){
+        activeGroups.set(slot.chokeGroup, slot, at)
       }
     }
   }
 
   soundbank.triggerOff = function(id, at){
-    var player = activeSounds.get(id, at)
-    if (player){
-      player.stop(at)
+    var slot = slots[id]
+    if (slot){
+      slot.triggerOff(at)
     }
   }
 
   soundbank.choke = function(id, at){
-    var player = activeSounds.get(id, at)
-    if (player){
-      player.choke(at)
+    var slot = slots[id]
+    if (slot){
+      slot.choke(at)
     }
-
     // choke group
-    var sound = sounds[id]
-    var groupPlayer = sound && sound.chokeGroup && activeGroups.get(sound.chokeGroup, at)
-    if (groupPlayer){
-      groupPlayer.choke(at)
+    var groupSlot = slot && slot.chokeGroup && activeGroups.get(slot.chokeGroup, at)
+    if (groupSlot){
+      groupSlot.choke(at)
     }
   }
 
@@ -104,46 +119,16 @@ module.exports = function(audioContext){
   return soundbank
 }
 
-function ActiveList(){
-  if (!(this instanceof ActiveList)) return new ActiveList()
-  this.activeSounds = {}
-}
-
-ActiveList.prototype.set = function(id, sound, at) {
-  var active = this.activeSounds[id] = (this.activeSounds[id] || [])
-  var removeBefore = at - 4
-  var trimAt = null
-
-  if (active.length){
-    for (var i=0;i<active.length;i++){
-
-      if (active[i].at < removeBefore){
-        trimAt = i
-      }
-
-      if (at > active[i].at && (!active[i+1] || at <= active[i+1].at) ){
-        active.splice(i+1, 0, {at: at, sound: sound})
-        break
-      }
+function setOutput(audioContext, slot, descriptor, slots){
+  slot.disconnect()
+  if (!('output' in descriptor) || descriptor.output === true){
+    slot.connect(audioContext.destination)
+  } else if (descriptor.output) {
+    var destinationSlot = slots[descriptor.output]
+    if (!destinationSlot){ // create destination slot
+      destinationSlot = slots[descriptor.output] = Slot(audioContext, {})
+      setOutput(audioContext, destinationSlot, {}, slots)
     }
-  } else {
-    active.push({at: at, sound: sound})
+    slot.connect(destinationSlot.input)
   }
-
-  if (trimAt != null){
-    console.log('trimming', id, trimAt)
-    this.activeSounds[id] = active.slice(trimAt+1)
-  }
-
-  console.log(active)
-}
-
-ActiveList.prototype.get = function(id, at){
-  var active = this.activeSounds[id] = (this.activeSounds[id] || [])
-  for (var i=0;i<active.length;i++){
-    if (at > active[i].at && (!active[i+1] || at <= active[i+1].at) ){
-      return active[i].sound
-    }
-  }
-  return null
 }
