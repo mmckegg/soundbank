@@ -1,9 +1,13 @@
 var Slot = require('./slot')
 var ChangeStream = require('./lib/change_stream')
 var ActiveList = require('./lib/active_list')
+var SlotReferences = require('./lib/slot_references')
 
 var applyStream = require('./lib/apply_stream')
 var mergeInto = require('./lib/merge_into')
+var xval = require('./lib/xval')
+var scale = require('./lib/scale')
+var chord = require('./lib/chord')
 
 var loadSample = require('./lib/load_sample')
 
@@ -31,6 +35,8 @@ module.exports = function(audioContext){
   var activeGroups = ActiveList()
 
   var slots = {}
+  var descriptors = {}
+  var slotReferences = SlotReferences()
 
   applyStream(soundbank, function(event){
 
@@ -55,29 +61,15 @@ module.exports = function(audioContext){
   }
 
   soundbank.update = function(descriptor){
-    var oldDescriptor = {}
-    var slot = slots[descriptor.id]
-
-    if (slot){ // update slot
-      oldDescriptor = slot.descriptor
-      slot.update(descriptor)
-
-      if (oldDescriptor.output != descriptor.output){
-        setOutput(audioContext, slot, descriptor, slots)
-      }
-
-    } else { // create slot
-      slot = slots[descriptor.id] = Slot(audioContext, descriptor)
-      slot.connect(audioContext.destination)
-      setOutput(audioContext, slot, descriptor, slots)
-    }
-
-    soundbank.emit('change', descriptor)
+    descriptors[descriptor.id] = descriptor
+    slotReferences.update(descriptor)
+    refreshSlot(descriptor.id)
+    soundbank.emit('change', descriptors[descriptor.id])
   }
 
   soundbank.getDescriptors = function(){
-    return Object.keys(slots).map(function(id){
-      return slots[id].descriptor
+    return Object.keys(descriptors).map(function(id){
+      return descriptors[id]
     })
   }
 
@@ -109,6 +101,7 @@ module.exports = function(audioContext){
     // choke group
     var groupSlot = slot && slot.chokeGroup && activeGroups.get(slot.chokeGroup, at)
     if (groupSlot){
+      activeGroups.remove(slot.chokeGroup, at)
       groupSlot.choke(at)
     }
   }
@@ -119,6 +112,56 @@ module.exports = function(audioContext){
       sampleCache[url] = audioData
       cb&&cb(err, audioData)
     })
+  }
+
+  function refreshSlot(id, skip){
+    var skip = skip || {}
+    var descriptor = descriptors[id]
+    var slot = slots[id]
+
+    var context = Object.create(descriptor)
+    context.int = parseInt
+    context.get = getSlotDescriptor
+    context.scale = scale
+    context.chord = chord
+    context.merge = merge
+    context.write = soundbank.update
+
+    try {
+      descriptor = xval(descriptor, context)
+    } catch (ex) {
+      process.nextTick(function(){
+        throw ex
+      })
+      return false
+    }
+
+    if (slot){ // update slot
+      var oldDescriptor = slot.descriptor
+      slot.update(descriptor)
+
+      if (oldDescriptor.output != descriptor.output){
+        setOutput(audioContext, slot, descriptor, slots)
+      }
+
+    } else { // create slot
+      slot = slots[descriptor.id] = Slot(audioContext, descriptor)
+      slot.connect(audioContext.destination)
+      setOutput(audioContext, slot, descriptor, slots)
+    }
+
+    skip[id] = true
+
+    slotReferences.lookup(id).forEach(function(sid){
+      if (!skip[sid]){
+        refreshSlot(sid, skip)
+      }
+    })
+
+  }
+
+  function getSlotDescriptor(id){
+    return descriptors[id]
   }
 
   return soundbank
@@ -136,4 +179,17 @@ function setOutput(audioContext, slot, descriptor, slots){
     }
     slot.connect(destinationSlot.input)
   }
+}
+
+function merge(){
+  var result = {}
+  for (var i=0;i<arguments.length;i++){
+    var obj = arguments[i]
+    if (obj){
+      Object.keys(obj).forEach(function(key){
+        result[key] = obj[key]
+      })
+    }
+  }
+  return result
 }

@@ -93,6 +93,7 @@ Slot.prototype.triggerOn = function(at){
   this._private.active.set(0, players, at)
 
   triggerInput(this, at, true)
+  triggerAction(this, at, true)
 }
 
 Slot.prototype.triggerOff = function(at){
@@ -106,6 +107,7 @@ Slot.prototype.triggerOff = function(at){
     }
   }
   triggerInput(this, at, false)
+  triggerAction(this, at, false)
 }
 
 Slot.prototype.choke = function(at){
@@ -238,4 +240,11 @@ function updateProcessors(slot, descriptors){
     pre.connect(post)
   }
 
+}
+
+function triggerAction(slot, at, value){
+  var action = value ? slot.descriptor.downAction : slot.descriptor.upAction
+  if (typeof action === 'function'){
+    action(at)
+  }
 }

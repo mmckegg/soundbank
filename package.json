@@ -17,6 +17,6 @@
   "author": "Matt McKegg",
   "license": "MIT",
   "dependencies": {
-
+    "teoria": "~0.3.8"
   }
 }
