@@ -96,20 +96,27 @@ Slot.prototype.triggerOn = function(at){
 }
 
 Slot.prototype.triggerOff = function(at){
-  var active = this._private.active.get(0, at)
+  var active = this._private.active.getAll(0, at)
   if (active){
     for (var i=0;i<active.length;i++){
-      active[i].triggerOff(at)
+      var players = active[i]
+      for (var x=0;x<players.length;x++){
+        players[x].triggerOff(at)
+      }
     }
   }
   triggerInput(this, at, false)
 }
 
 Slot.prototype.choke = function(at){
-  var active = this._private.active.get(0, at)
+  var active = this._private.active.getAll(0, at)
   if (active){
+    this._private.active.remove(0, at)
     for (var i=0;i<active.length;i++){
-      active[i].choke(at)
+      var players = active[i]
+      for (var x=0;x<players.length;x++){
+        players[x].choke(at)
+      }
     }
   }
 }

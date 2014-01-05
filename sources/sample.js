@@ -59,6 +59,7 @@ Sample.prototype.triggerOff = function(at){
     this.player.stop(at+this.envelope.release)
     this.envelope.stop(at)
     this.stopped = true
+    return true
   }
 }
 
@@ -67,6 +68,7 @@ Sample.prototype.choke = function(at){
     this.player.stop(at+0.01)
     this.envelope.choke(at)
     this.stopped = true
+    return true
   }
 }
 
