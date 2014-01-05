@@ -56,6 +56,10 @@ Slot.prototype.update = function(descriptor){
     this._private.pre.gain.value = descriptor.gain
   }
 
+  if (descriptor.volume != this.descriptor.volume){
+    this._private.post.gain.value = descriptor.volume
+  }
+
   if (descriptor.sources && descriptor.sources.length){
     for (var i=0;i<descriptor.sources.length;i++){
       var type = descriptor.sources && descriptor.sources[i] && descriptor.sources[i].type
