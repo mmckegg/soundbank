@@ -93,6 +93,7 @@ Slot.prototype.triggerOn = function(at){
   this._private.active.set(0, players, at)
 
   triggerInput(this, at, true)
+  triggerSync(this, at)
   triggerAction(this, at, true)
 }
 
@@ -192,6 +193,14 @@ function updateInput(slot, descriptor){
 }
 
 ///// PROCESSORS /////
+
+function triggerSync(slot, at){
+  var processors = slot._private.processors
+  for (var i=0;i<processors.length;i++){
+    var processor = processors[i]
+    processor.sync && processor.sync(at)
+  }
+}
 
 function updateProcessors(slot, descriptors){
   var processors = slot._private.processors
