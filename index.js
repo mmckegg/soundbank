@@ -24,11 +24,17 @@ module.exports = function(audioContext){
     audioContext.processors = {}
   }
 
+  if (!audioContext.modulators){
+    audioContext.modulators = {}
+  }
+
   audioContext.sources['oscillator'] = require('./sources/oscillator')
   audioContext.sources['sample'] = require('./sources/sample')
   audioContext.processors['overdrive'] = require('./processors/overdrive')
   audioContext.processors['delay'] = require('./processors/delay')
 
+  audioContext.modulators['adsr'] = require('./modulators/adsr')
+  audioContext.modulators['lfo'] = require('./modulators/lfo')
 
   var soundbank = audioContext.createGain()
 

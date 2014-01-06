@@ -1,43 +1,27 @@
-var Envelope = require('../lib/envelope')
+var Modulators = require('../lib/modulators')
 
 module.exports = Oscillator
 
 function Oscillator(audioContext, descriptor, at){
   if (!(this instanceof Oscillator)) return new Oscillator(audioContext, descriptor, at)
 
-  // descriptor: pitch, shape
-  var oscillator = audioContext.createOscillator()
-  oscillator.detune.value = (descriptor.pitch - 69) * 100
+  this.context = audioContext
+  this._modulators = Modulators(audioContext)
+  this._osc = audioContext.createOscillator()
+  this._amp = audioContext.createGain()
+  this._osc.connect(this._amp)
 
-  if (descriptor.shape){
-    oscillator.type = descriptor.shape
-  }
+  this.output = this._amp
 
-  var vibe = this._vibe = {
-    sine: audioContext.createOscillator(),
-    amp: audioContext.createGain()
-  }
+  this.update(descriptor)
 
-  vibe.sine.start(at)
-  vibe.sine.frequency.value = descriptor.vibrato[0] || 1
-  vibe.amp.gain.value = descriptor.vibrato[1] || 0
-  vibe.sine.connect(vibe.amp)
-  vibe.amp.connect(oscillator.frequency)
-
-  oscillator.start(at)
-
-  this.player = oscillator
-  this.envelope = Envelope(audioContext, descriptor.envelope, at)
-  this.descriptor = descriptor
-  this.output = this.envelope
-
-  oscillator.connect(this.envelope)
+  this._osc.start(at)
+  this._modulators.start(at)
 }
 
 Oscillator.prototype.triggerOff = function(at){
   if (!this.stopped){
-    this.player.stop(at+this.envelope.release)
-    this.envelope.stop(at)
+    this._osc.stop(this._modulators.stop(at))
     this.stopped = true
     return true
   }
@@ -45,33 +29,28 @@ Oscillator.prototype.triggerOff = function(at){
 
 Oscillator.prototype.choke = function(at){
   if (!this.stopped){
-    this.player.stop(at+0.01)
-    this.envelope.choke(at)
+    this._osc.stop(this._modulators.choke(at))
     this.stopped = true
     return true
   }
 }
 
 Oscillator.prototype.update = function(descriptor){
-  this.envelope.update(descriptor.envelope)
 
-  // update transpose
-  if (descriptor.pitch !== this.descriptor.pitch){
-    this.player.detune.value = (descriptor.pitch - 69) * 100
+  if (!this.descriptor || descriptor.note !== this.descriptor.note){
+    this._modulators.apply(this._osc.detune, descriptor.note, getCentsFromNote)
   }
 
-  var oldVibe = this.descriptor.vibrato || [1, 0]
-  var newVibe = descriptor.vibrato || [1, 0]
-
-  if (oldVibe[0] != newVibe[0]){
-    this._vibe.sine.frequency.value = newVibe[0]
-  }
-  if (oldVibe[1] != newVibe[1]){
-    this._vibe.amp.gain.value = newVibe[1]
+  if (!this.descriptor || descriptor.amp !== this.descriptor.amp){
+    this._modulators.apply(this._amp.gain, descriptor.amp, 1)
   }
 
-  if (descriptor.shape !== this.descriptor.shape){
-    this.player.type = descriptor.shape
+  if (!this.descriptor || descriptor.frequency !== this.descriptor.frequency){
+    this._modulators.apply(this._osc.frequency, descriptor.frequency, 440)
+  }
+
+  if (!this.descriptor || descriptor.shape !== this.descriptor.shape){
+    this._osc.type = descriptor.shape
   }
 
   this.descriptor = descriptor
@@ -83,4 +62,9 @@ Oscillator.prototype.connect = function(to){
 
 Oscillator.prototype.disconnect = function(channel){
   this.output.disconnect(channel)
+}
+
+function getCentsFromNote(note){
+  note = note != null ? note : 72
+  return (note - 69) * 100
 }
