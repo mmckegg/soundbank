@@ -9,8 +9,6 @@ var xval = require('./lib/xval')
 var scale = require('./lib/scale')
 var chord = require('./lib/chord')
 
-var loadSample = require('./lib/load_sample')
-
 ////////////////////////////////////////////////
 
 
@@ -74,6 +72,10 @@ module.exports = function(audioContext){
     soundbank.emit('change', descriptors[descriptor.id])
   }
 
+  soundbank.getDescriptor = function(id){
+    return descriptors[id] || {id: String(id)}
+  }
+
   soundbank.getDescriptors = function(){
     return Object.keys(descriptors).map(function(id){
       return descriptors[id]
@@ -111,14 +113,6 @@ module.exports = function(audioContext){
       activeGroups.remove(slot.chokeGroup, at)
       groupSlot.choke(at)
     }
-  }
-
-  soundbank.loadSample = function(url, cb){
-    var sampleCache = audioContext.sampleCache = audioContext.sampleCache || {}
-    loadSample(url, audioContext, function(err, audioData){
-      sampleCache[url] = audioData
-      cb&&cb(err, audioData)
-    })
   }
 
   function refreshSlot(id, skip){

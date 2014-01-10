@@ -105,14 +105,5 @@ Sample.prototype.disconnect = function(channel){
 
 ///
 Sample.prime = function(audioContext, descriptor, cb){
-  var sampleCache = audioContext.sampleCache = audioContext.sampleCache || {}
-  if (sampleCache[descriptor.url]){
-    cb&&cb()
-  } else {
-    sampleCache[descriptor.url] = true // mark to show loading
-    loadSample(descriptor.url, audioContext, function(err, audioData){
-      sampleCache[descriptor.url] = audioData
-      cb&&cb()
-    })
-  }
+  audioContext.loadSample(descriptor.url, cb)
 }
