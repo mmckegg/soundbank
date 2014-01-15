@@ -4,10 +4,7 @@ var ActiveList = require('./lib/active_list')
 var SlotReferences = require('./lib/slot_references')
 
 var applyStream = require('./lib/apply_stream')
-var mergeInto = require('./lib/merge_into')
-var xval = require('./lib/xval')
-var scale = require('./lib/scale')
-var chord = require('./lib/chord')
+var applyProviders = require('./lib/apply_providers')
 
 ////////////////////////////////////////////////
 
@@ -26,6 +23,10 @@ module.exports = function(audioContext){
     audioContext.modulators = {}
   }
 
+  if (!audioContext.providers){
+    audioContext.providers = {}
+  }
+
   audioContext.sources['oscillator'] = require('./sources/oscillator')
   audioContext.sources['sample'] = require('./sources/sample')
   audioContext.processors['overdrive'] = require('./processors/overdrive')
@@ -34,6 +35,12 @@ module.exports = function(audioContext){
 
   audioContext.modulators['adsr'] = require('./modulators/adsr')
   audioContext.modulators['lfo'] = require('./modulators/lfo')
+
+  audioContext.providers['scale'] = require('./providers/scale')
+  audioContext.providers['inherit'] = require('./providers/inherit')
+  audioContext.providers['chord'] = require('./providers/chord')
+  audioContext.providers['multi'] = require('./providers/multi')
+  audioContext.providers['param'] = require('./providers/param')
 
   var soundbank = audioContext.createGain()
 
@@ -67,8 +74,8 @@ module.exports = function(audioContext){
 
   soundbank.update = function(descriptor){
     descriptors[descriptor.id] = descriptor
-    slotReferences.update(descriptor)
     refreshSlot(descriptor.id)
+    slotReferences.lookup(descriptor.id).forEach(refreshSlot)
     soundbank.emit('change', descriptors[descriptor.id])
   }
 
@@ -115,27 +122,17 @@ module.exports = function(audioContext){
     }
   }
 
-  function refreshSlot(id, skip){
-    var skip = skip || {}
+  function refreshSlot(id){
     var descriptor = descriptors[id]
     var slot = slots[id]
 
-    var context = Object.create(descriptor)
-    context.int = parseInt
-    context.get = getSlotDescriptor
-    context.scale = scale
-    context.chord = chord
-    context.merge = merge
-    context.write = soundbank.update
+    var context = Object.create(audioContext)
+    context.params = descriptor
+    context.descriptors = descriptors
+    context.slotReferences = []
 
-    try {
-      descriptor = xval(descriptor, context)
-    } catch (ex) {
-      process.nextTick(function(){
-        throw ex
-      })
-      return false
-    }
+    descriptor = applyProviders(context, descriptor)
+    slotReferences.update(id, context.slotReferences)
 
     if (slot){ // update slot
       var oldDescriptor = slot.descriptor
@@ -150,15 +147,6 @@ module.exports = function(audioContext){
       slot.connect(audioContext.destination)
       setOutput(audioContext, slot, descriptor, slots)
     }
-
-    skip[id] = true
-
-    slotReferences.lookup(id).forEach(function(sid){
-      if (!skip[sid]){
-        refreshSlot(sid, skip)
-      }
-    })
-
   }
 
   function getSlotDescriptor(id){

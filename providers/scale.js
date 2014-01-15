@@ -1,6 +1,13 @@
 var teoria = require('teoria')
 
-module.exports = function(scaleName, root, offset){
+module.exports = function(context, descriptor){
+  var scale = descriptor.scale || 'major'
+  var root = descriptor.root || 'C'
+  var offset = (descriptor.offset || 0) + (context.params.offset || 0)
+  return getNote(scale, root, offset)
+}
+
+function getNote(scaleName, root, offset){
   var rootNote = typeof root === 'number' ? teoria.note.fromMIDI(root) : teoria.note(root)
   var scale = rootNote.scale(scaleName)
   var length = scale.scale.length
