@@ -66,7 +66,11 @@ module.exports = function(audioContext){
       soundbank.triggerOff(event.data[1], event.time)
     }
 
-    this.queue(event)
+    var self = this
+    process.nextTick(function(){
+      self.queue(event)
+    })
+
   })
 
   soundbank.getChangeStream = function(){
