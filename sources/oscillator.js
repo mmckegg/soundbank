@@ -50,7 +50,7 @@ Oscillator.prototype.update = function(descriptor){
   }
 
   if (!this.descriptor || descriptor.shape !== this.descriptor.shape){
-    this._osc.type = descriptor.shape
+    this._osc.type = descriptor.shape || 'sine'
   }
 
   this.descriptor = descriptor

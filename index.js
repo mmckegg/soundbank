@@ -41,6 +41,7 @@ module.exports = function(audioContext){
   audioContext.providers['chord'] = require('./providers/chord')
   audioContext.providers['multi'] = require('./providers/multi')
   audioContext.providers['param'] = require('./providers/param')
+  audioContext.providers['slice'] = require('./providers/slice')
 
   var soundbank = audioContext.createGain()
 
