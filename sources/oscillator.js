@@ -1,5 +1,4 @@
 var Modulators = require('../lib/modulators')
-
 module.exports = Oscillator
 
 function Oscillator(audioContext, descriptor, at){
@@ -42,7 +41,7 @@ Oscillator.prototype.update = function(descriptor){
   }
 
   if (!this.descriptor || descriptor.amp !== this.descriptor.amp){
-    this._modulators.apply(this._amp.gain, descriptor.amp, 1)
+    this._modulators.apply(this._amp.gain, descriptor.amp, 0.6)
   }
 
   if (!this.descriptor || descriptor.frequency !== this.descriptor.frequency){
