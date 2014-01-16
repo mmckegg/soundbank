@@ -1,87 +1,88 @@
 var loadSample = require('../lib/load_sample')
-var Envelope = require('../lib/envelope')
+var Modulators = require('../lib/modulators')
 
 module.exports = Sample
 
 function Sample(audioContext, descriptor, at){
   if (!(this instanceof Sample)) return new Sample(audioContext, descriptor, at)
 
-  var sampleCache = audioContext.sampleCache || {}
 
-  // load
-  var player = audioContext.createBufferSource()
-  if (sampleCache[descriptor.url] && sampleCache[descriptor.url] !== true){
-    player.buffer = sampleCache[descriptor.url]
+  var sampleCache = audioContext.sampleCache || {}
+  if (!sampleCache[descriptor.url] || Array.isArray(sampleCache[descriptor.url])){
+    this.descriptor = descriptor
+    this.stopped = true
+    return false
   }
 
-  var baseRate = 1
+  // load
+  this.player = audioContext.createBufferSource()
+  this.player.buffer = sampleCache[descriptor.url]
+
+  this._modulators = Modulators(audioContext)
+  this._amp = audioContext.createGain()
+  this.player.connect(this._amp)
+  this.output = this._amp
+
+  this.update(descriptor)
 
   // sample trim
   var offset = descriptor.offset || [0,1]
+  var start = offset[0] * this.player.buffer.duration
+  var end = offset[1] * this.player.buffer.duration
 
-  var start = offset[0] * player.buffer.duration
-  var end = offset[1] * player.buffer.duration
-
+  var baseRate = 1
   if (end < start){
     baseRate = -1
-    start = offset[1] * player.buffer.duration
-    end = offset[0] * player.buffer.duration
+    start = offset[1] * this.player.buffer.duration
+    end = offset[0] * this.player.buffer.duration
   }
 
-  // loop
   if (descriptor.mode === 'loop'){
-    player.loop = true
-    player.loopStart = start
-    player.loopEnd = end
+    this.player.loop = true
+    this.player.loopStart = start
+    this.player.loopEnd = end
   } else {
-    player.maxLength = Math.min(player.buffer.duration, end - start) 
+    this.player.maxLength = Math.min(this.player.buffer.duration, end - start) 
+    this.player.loop = false
   }
 
-  // transpose
-  if (descriptor.transpose){
-    var rateChange = Math.pow(2, descriptor.transpose / 12)
-    player.playbackRate.value = rateChange * baseRate
-    //player.maxLength = player.maxLength / rateChange
-  }
-
-  player.start(at, start, player.maxLength || player.buffer.duration)
-  
-  this.envelope = Envelope(audioContext, descriptor.envelope, at)
-  player.connect(this.envelope)
-
-  this.descriptor = descriptor
-  this.player = player
-  this.output = this.envelope
+  this.player.start(at, start, this.player.maxLength || this.player.buffer.duration)
+  this._modulators.start(at)
 }
 
 Sample.prototype.triggerOff = function(at){
   if (!this.stopped && this.descriptor.mode !== 'oneshot'){
-    this.player.stop(at+this.envelope.release)
-    this.envelope.stop(at)
-    this.stopped = true
-    return true
+    if (!this.stopped){
+      this.player.stop(this._modulators.stop(at))
+      this.stopped = true
+      return true
+    }
   }
 }
 
 Sample.prototype.choke = function(at){
   if (!this.stopped){
-    this.player.stop(at+0.01)
-    this.envelope.choke(at)
+    this.player.stop(this._modulators.choke(at))
     this.stopped = true
     return true
   }
 }
 
 Sample.prototype.update = function(descriptor){
-  this.envelope.update(descriptor.envelope)
-
-  // update transpose
-  if (descriptor.transpose !== this.descriptor.transpose){
-    var rateChange = Math.pow(2, descriptor.transpose / 12)
-    this.player.playbackRate.value = rateChange
+  if (!this.player){
+    return false
   }
 
-  var oldOffset = this.descriptor.offset || [0,1]
+  if (!this.descriptor || descriptor.speed !== this.descriptor.speed || descriptor.transpose !== this.descriptor.transpose){
+    var rateChange = Math.pow(2, descriptor.transpose / 12)
+    this._modulators.apply(this.player.playbackRate, descriptor.speed, rateChange)
+  }
+
+  if (!this.descriptor || descriptor.amp !== this.descriptor.amp){
+    this._modulators.apply(this._amp.gain, descriptor.amp, 0.6)
+  }
+
+  var oldOffset = this.descriptor && this.descriptor.offset || [0,1]
   var newOffset = descriptor.offset || [0,1]
 
   if (oldOffset[0] != newOffset[0] && descriptor.mode === 'loop'){
@@ -96,11 +97,11 @@ Sample.prototype.update = function(descriptor){
 }
 
 Sample.prototype.connect = function(to){
-  this.output.connect(to)
+  this.output && this.output.connect(to)
 }
 
 Sample.prototype.disconnect = function(channel){
-  this.output.disconnect(channel)
+  this.output && this.output.disconnect(channel)
 }
 
 ///
