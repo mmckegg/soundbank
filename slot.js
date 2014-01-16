@@ -219,10 +219,11 @@ function updateProcessors(slot, descriptors){
       processor.update(descriptor)
     } else if (processor && !descriptor){ // remove
       reconnect.push(i)
-      processor.disconnect()
+      processor.destroy()
+      processors.splice(i, 1)
     } else if (ctor) { // add / replace
       reconnect.push(i)
-      if (processor) processor.disconnect()
+      if (processor) processor.destroy()
       processors[i] = ctor(slot.context, descriptor)
     }
   }
@@ -236,12 +237,18 @@ function updateProcessors(slot, descriptors){
     var reconnectingNext = ~reconnect.indexOf(i+1)
 
     prevProcessor.disconnect()
-    prevProcessor.connect(processor.input)
+    if (processor){
+      prevProcessor.connect(processor.input)
 
-    if (!reconnectingNext){
-      processor.disconnect()
-      processor.connect(nextProcessor.input || nextProcessor)
+      if (!reconnectingNext){
+        processor.disconnect()
+        processor.connect(nextProcessor.input || nextProcessor)
+      }
+
+    } else {
+      prevProcessor.connect(nextProcessor.input || nextProcessor)
     }
+
   }
 
   if (!descriptors.length && processors.length){

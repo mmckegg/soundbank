@@ -12,6 +12,7 @@ function Filter(audioContext, descriptor){
   this.output = this._filter
   this.input = this._filter
   this.update(descriptor)
+  this._modulators.start(0)
 }
 
 Filter.prototype.sync = function(at){
@@ -20,11 +21,14 @@ Filter.prototype.sync = function(at){
 
 Filter.prototype.connect = function(to){
   this.output.connect(to)
-  this._modulators.start(0)
 }
 
 Filter.prototype.disconnect = function(){
   this.output.disconnect()
+}
+
+Filter.prototype.destroy = function(){
+  this.disconnect()
   this._modulators.stop(0)
 }
 

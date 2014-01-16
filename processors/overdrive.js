@@ -1,44 +1,49 @@
-var Overdrive = require('../vendor/overdrive')
-module.exports = function(audioContext, descriptor){
+var InternalOverdrive = require('../vendor/overdrive')
 
-  var overdrive = new Overdrive(audioContext, {
+module.exports = Overdrive
+
+function Overdrive(audioContext, descriptor){
+  if (!(this instanceof Overdrive)){
+    return new Overdrive(audioContext, descriptor)
+  }
+
+  var overdrive = new InternalOverdrive(audioContext, {
     preBand: descriptor.band || 1.0,
     color: descriptor.color || 4000,
     drive: descriptor.drive != null ? descriptor.drive : 0.8,
     postCut: descriptor.cut || 8000
   })
 
-  return {
-    descriptor: descriptor,
-    input: overdrive.input,
-    output: overdrive.output,
-    effect: overdrive,
-    connect: connect,
-    disconnect: disconnect,
-    update: update
-  }
+  this.descriptor = descriptor
+  this.input = overdrive.input
+  this.output = overdrive.output
+  this._overdrive = overdrive
 }
 
-function update(descriptor){
+Overdrive.prototype.update = function(descriptor){
   if (this.descriptor.band != descriptor.band){
-    this.effect.preBand = descriptor.band
+    this._overdrive.preBand = descriptor.band
   }
   if (this.descriptor.color != descriptor.color){
-    this.effect.color = descriptor.color
+    this._overdrive.color = descriptor.color
   }
   if (this.descriptor.drive != descriptor.drive){
-    this.effect.drive = descriptor.drive
+    this._overdrive.drive = descriptor.drive
   }
   if (this.descriptor.cut != descriptor.cut){
-    this.effect.postCut = descriptor.cut
+    this._overdrive.postCut = descriptor.cut
   }
   this.descriptor = descriptor
 }
 
-function connect(to){
+Overdrive.prototype.connect = function (to){
   this.output.connect(to)
 }
 
-function disconnect(channel){
+Overdrive.prototype.disconnect = function(channel){
   this.output.disconnect(channel)
+}
+
+Overdrive.prototype.destroy = function(){
+  this.disconnect()
 }
