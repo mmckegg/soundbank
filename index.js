@@ -32,6 +32,7 @@ module.exports = function(audioContext){
   audioContext.processors['overdrive'] = require('./processors/overdrive')
   audioContext.processors['delay'] = require('./processors/delay')
   audioContext.processors['filter'] = require('./processors/filter')
+  audioContext.processors['gain'] = require('./processors/gain')
 
   audioContext.modulators['adsr'] = require('./modulators/adsr')
   audioContext.modulators['lfo'] = require('./modulators/lfo')
