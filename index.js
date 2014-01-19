@@ -145,13 +145,13 @@ module.exports = function(audioContext){
       slot.update(descriptor)
 
       if (oldDescriptor.output != descriptor.output){
-        setOutput(audioContext, slot, descriptor, slots)
+        setOutput(audioContext, soundbank, slot, descriptor, slots)
       }
 
     } else { // create slot
       slot = slots[descriptor.id] = Slot(audioContext, descriptor)
-      slot.connect(audioContext.destination)
-      setOutput(audioContext, slot, descriptor, slots)
+      slot.connect(soundbank)
+      setOutput(audioContext, soundbank, slot, descriptor, slots)
     }
   }
 
@@ -162,15 +162,15 @@ module.exports = function(audioContext){
   return soundbank
 }
 
-function setOutput(audioContext, slot, descriptor, slots){
+function setOutput(audioContext, soundbank, slot, descriptor, slots){
   slot.disconnect()
   if (!('output' in descriptor) || descriptor.output === true){
-    slot.connect(audioContext.destination)
+    slot.connect(soundbank)
   } else if (descriptor.output) {
     var destinationSlot = slots[descriptor.output]
     if (!destinationSlot){ // create destination slot
       destinationSlot = slots[descriptor.output] = Slot(audioContext, {})
-      setOutput(audioContext, destinationSlot, {}, slots)
+      setOutput(audioContext, soundbank, destinationSlot, {}, slots)
     }
     slot.connect(destinationSlot.input)
   }
