@@ -36,12 +36,23 @@ Oscillator.prototype.choke = function(at){
 
 Oscillator.prototype.update = function(descriptor){
 
+  // roll off amp with frequency increase
+  var ampRolloff = (Math.exp((descriptor.note||0)/127)-1) * 0.5
+  var amp = JSON.parse(JSON.stringify(descriptor.amp != null ? descriptor.amp : 1))
+  if (amp instanceof Object){
+    amp.value = amp.value - (ampRolloff*amp.value)
+  } else if (typeof amp == 'number'){
+    amp = amp - (ampRolloff*amp)
+  }
+
+  console.log(descriptor.amp, amp)
+
   if (!this.descriptor || descriptor.note !== this.descriptor.note){
     this._modulators.apply(this._osc.detune, descriptor.note, getCentsFromNote)
   }
 
-  if (!this.descriptor || descriptor.amp !== this.descriptor.amp){
-    this._modulators.apply(this._amp.gain, descriptor.amp, 0.6)
+  if (!this.descriptor || descriptor.amp !== this.descriptor.amp || descriptor.note !== this.descriptor.note){
+    this._modulators.apply(this._amp.gain, amp, 0.6)
   }
 
   if (!this.descriptor || descriptor.frequency !== this.descriptor.frequency){
