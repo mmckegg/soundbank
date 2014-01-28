@@ -32,10 +32,12 @@ ADSR.prototype.stop = function(at){
   var release = valueOrDefault(this.descriptor.release, 0)
   var sustain = valueOrDefault(this.descriptor.sustain, 1)
   if (this.target){
-    if (at >= this._sustainFrom){
-      this.target.setValueAtTime(sustain*multiplier, at)
+    if (release){
+      if (at >= this._sustainFrom){
+        this.target.setValueAtTime(sustain*multiplier, at)
+      }
+      this.target.linearRampToValueAtTime(this._end, at+release)
     }
-    this.target.linearRampToValueAtTime(this._end, at+release)
     this.target = null
     return at+release
   }
