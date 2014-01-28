@@ -209,9 +209,10 @@ function updateProcessors(slot, descriptors){
 
   var pre = slot._private.pre
   var post = slot._private.post
+  var offset = 0
 
   for (var i=0;i<length;i++){
-    var processor = processors[i]
+    var processor = processors[i-offset]
     var descriptor = descriptors[i]
     var ctor = descriptor && slot.context.processors && slot.context.processors[descriptor.type]
 
@@ -220,7 +221,8 @@ function updateProcessors(slot, descriptors){
     } else if (processor && !descriptor){ // remove
       reconnect.push(i)
       processor.destroy()
-      processors.splice(i, 1)
+      processors.splice(i-offset, 1)
+      offset += 1
     } else if (ctor) { // add / replace
       reconnect.push(i)
       if (processor) processor.destroy()
