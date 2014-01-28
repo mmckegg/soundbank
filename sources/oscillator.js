@@ -45,8 +45,6 @@ Oscillator.prototype.update = function(descriptor){
     amp = amp - (ampRolloff*amp)
   }
 
-  console.log(descriptor.amp, amp)
-
   if (!this.descriptor || descriptor.note !== this.descriptor.note){
     this._modulators.apply(this._osc.detune, descriptor.note, getCentsFromNote)
   }
