@@ -1,7 +1,7 @@
 {
   "name": "soundbank",
   "version": "0.0.0",
-  "description": "Web Audio API based sample player with basic editing",
+  "description": "A collection of triggerable Web Audio API audio slots, supporting audio routing, midi input and value providers.",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -17,7 +17,6 @@
   "author": "Matt McKegg",
   "license": "MIT",
   "dependencies": {
-    "teoria": "~0.3.8",
-    "json-query": "~0.3.2"
+    "audio-slot": "~0.0.2"
   }
 }
