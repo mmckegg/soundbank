@@ -1,83 +1,25 @@
-var Slot = require('./slot')
-var ChangeStream = require('./lib/change_stream')
+var Slot = require('audio-slot')
 var ActiveList = require('./lib/active_list')
 var SlotReferences = require('./lib/slot_references')
 
-var applyStream = require('./lib/apply_stream')
 var applyProviders = require('./lib/apply_providers')
+var applyEmitter = require('./lib/apply_emitter')
 
 ////////////////////////////////////////////////
 
 
 module.exports = function(audioContext){
 
-  if (!audioContext.sources){
-    audioContext.sources = {}
-  }
-
-  if (!audioContext.processors){
-    audioContext.processors = {}
-  }
-
-  if (!audioContext.modulators){
-    audioContext.modulators = {}
-  }
-
-  if (!audioContext.providers){
-    audioContext.providers = {}
-  }
-
-  audioContext.sources['oscillator'] = require('./sources/oscillator')
-  audioContext.sources['sample'] = require('./sources/sample')
-  audioContext.processors['overdrive'] = require('./processors/overdrive')
-  audioContext.processors['delay'] = require('./processors/delay')
-  audioContext.processors['filter'] = require('./processors/filter')
-  audioContext.processors['gain'] = require('./processors/gain')
-  audioContext.processors['dipper'] = require('./processors/dipper')
-
-  audioContext.modulators['adsr'] = require('./modulators/adsr')
-  audioContext.modulators['lfo'] = require('./modulators/lfo')
-
-  audioContext.providers['scale'] = require('./providers/scale')
-  audioContext.providers['inherit'] = require('./providers/inherit')
-  audioContext.providers['chord'] = require('./providers/chord')
-  audioContext.providers['multi'] = require('./providers/multi')
-  audioContext.providers['param'] = require('./providers/param')
-  audioContext.providers['slice'] = require('./providers/slice')
-
   var soundbank = audioContext.createGain()
+
+  // turn the AudioNode into an EventEmitter
+  applyEmitter(soundbank)
 
   var activeGroups = ActiveList()
 
   var slots = {}
   var descriptors = {}
   var slotReferences = SlotReferences()
-
-  applyStream(soundbank, function(event){
-
-    if (Array.isArray(event)){
-      event = { // schedule event for immediate playback if not already scheduled
-        time: audioContext.currentTime,
-        data: event
-      }
-    }
-
-    if (event.data[2]){
-      soundbank.triggerOn(event.data[1], event.time)
-    } else {
-      soundbank.triggerOff(event.data[1], event.time)
-    }
-
-    var self = this
-    process.nextTick(function(){
-      self.queue(event)
-    })
-
-  })
-
-  soundbank.getChangeStream = function(){
-    return ChangeStream(soundbank)
-  }
 
   soundbank.update = function(descriptor){
     descriptors[descriptor.id] = descriptor
@@ -173,7 +115,7 @@ function setOutput(audioContext, soundbank, slot, descriptor, slots){
       destinationSlot = slots[descriptor.output] = Slot(audioContext, {})
       setOutput(audioContext, soundbank, destinationSlot, {}, slots)
     }
-    slot.connect(destinationSlot.input)
+    slot.connect(destinationSlot)
   }
 }
 
