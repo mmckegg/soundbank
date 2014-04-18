@@ -17,6 +17,7 @@
   "author": "Matt McKegg",
   "license": "MIT",
   "dependencies": {
-    "audio-slot": "~0.0.2"
+    "audio-slot": "~0.0.2",
+    "audio-meddle": "^0.1.0"
   }
 }
