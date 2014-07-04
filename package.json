@@ -1,6 +1,6 @@
 {
   "name": "soundbank",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "A collection of triggerable Web Audio API audio slots, supporting audio routing, midi input and value providers.",
   "main": "index.js",
   "scripts": {
