@@ -51,15 +51,17 @@ module.exports = function(audioContext){
 
     var slot = slots[id]
     if (slot){
+
+      if (slot.chokeGroup){
+        activeGroups.set(slot.chokeGroup, slot, at)
+      }
+
       slot.triggerOn(at)
 
       if (slot.descriptor.inputMode === 'meddler'){
         meddler.start(slot.descriptor.id, at)
       }
 
-      if (slot.chokeGroup){
-        activeGroups.set(slot.chokeGroup, slot, at)
-      }
     }
   }
 
@@ -138,7 +140,7 @@ function setOutput(audioContext, output, meddler, slot, descriptor, slots){
       }
       slot.connect(destinationSlot)
     }
-    
+
   }
 }
 
