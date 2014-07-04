@@ -53,7 +53,7 @@ module.exports = function(audioContext){
     if (slot){
       slot.triggerOn(at)
 
-      if (slot.descriptor.output === 'meddler'){
+      if (slot.descriptor.inputMode === 'meddler'){
         meddler.start(slot.descriptor.id, at)
       }
 
@@ -121,26 +121,24 @@ module.exports = function(audioContext){
 
 function setOutput(audioContext, output, meddler, slot, descriptor, slots){
   slot.disconnect()
-  if (!('output' in descriptor) || descriptor.output === true){
+  if (descriptor.inputMode === 'meddler'){
+    // do nothing, output will be patched on trigger
+  } else if (!('output' in descriptor) || descriptor.output === true || descriptor.output == ''){
     slot.connect(output)
   } else if (descriptor.output) {
 
-    if (descriptor.inputMode === 'meddler'){
-      // do nothing, output will be patched on trigger
+    if (descriptor.output === 'meddler'){
+      slot.connect(meddler)
     } else {
-      if (descriptor.output === 'meddler'){
-        slot.connect(meddler)
-      } else {
-        var destinationSlot = slots[descriptor.output]
-        if (!destinationSlot){ // create destination slot
-          destinationSlot = slots[descriptor.output] = Slot(audioContext, {})
-          meddler.add(descriptor.output, destinationSlot)
-          setOutput(audioContext, output, meddler, destinationSlot, {}, slots)
-        }
-        slot.connect(destinationSlot)
+      var destinationSlot = slots[descriptor.output]
+      if (!destinationSlot){ // create destination slot
+        destinationSlot = slots[descriptor.output] = Slot(audioContext, {})
+        meddler.add(descriptor.output, destinationSlot)
+        setOutput(audioContext, output, meddler, destinationSlot, {}, slots)
       }
+      slot.connect(destinationSlot)
     }
-
+    
   }
 }
 
