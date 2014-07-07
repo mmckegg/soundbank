@@ -102,7 +102,7 @@ module.exports = function(audioContext){
       var oldDescriptor = slot.descriptor
       slot.update(descriptor)
 
-      if (oldDescriptor.output != descriptor.output){
+      if (oldDescriptor.output != descriptor.output || oldDescriptor.inputMode != descriptor.inputMode){
         setOutput(audioContext, output, meddler, slot, descriptor, slots)
       }
 
@@ -128,7 +128,6 @@ function setOutput(audioContext, output, meddler, slot, descriptor, slots){
   } else if (!('output' in descriptor) || descriptor.output === true || descriptor.output == ''){
     slot.connect(output)
   } else if (descriptor.output) {
-
     if (descriptor.output === 'meddler'){
       slot.connect(meddler)
     } else {
