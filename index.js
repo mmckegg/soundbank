@@ -112,6 +112,9 @@ module.exports = function(audioContext){
       slot.connect(output)
       setOutput(audioContext, output, meddler, slot, descriptor, slots)
     }
+
+    // emit with providers
+    soundbank.emit('refresh', descriptor)
   }
 
   function getSlotDescriptor(id){
