@@ -47,7 +47,7 @@ Returns an array of all slot descriptors.
 var Soundbank = require('soundbank')
 var Bopper = require('bopper')
 
-var audioContext = new webkitAudioContext()
+var audioContext = new AudioContext()
 
 // choose your nodes:
 
