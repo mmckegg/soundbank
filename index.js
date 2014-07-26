@@ -6,6 +6,7 @@ var createMeddler = require('audio-meddle')
 
 var applyProviders = require('./lib/apply_providers')
 var applyEmitter = require('./lib/apply_emitter')
+var IAC = require('inheritable-audio-context')
 
 ////////////////////////////////////////////////
 
@@ -90,7 +91,7 @@ module.exports = function(audioContext){
     var descriptor = descriptors[id]
     var slot = slots[id]
 
-    var context = Object.create(audioContext)
+    var context = IAC(audioContext, true)
     context.params = descriptor
     context.descriptors = descriptors
     context.slotReferences = []

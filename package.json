@@ -18,6 +18,7 @@
   "license": "MIT",
   "dependencies": {
     "audio-slot": "^1.0.0",
-    "audio-meddle": "^0.1.2"
+    "audio-meddle": "^0.1.2",
+    "inheritable-audio-context": "^1.0.1"
   }
 }
