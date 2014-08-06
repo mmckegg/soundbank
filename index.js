@@ -37,6 +37,14 @@ module.exports = function(audioContext){
     soundbank.emit('change', descriptors[descriptor.id])
   }
 
+  soundbank.remove = function(id){
+    var descriptor = descriptors[descriptor.id] = {id: id, _deleted: true}
+    refreshSlot(descriptor.id)
+    slotReferences.lookup(descriptor.id).forEach(refreshSlot)
+    ;delete descriptors[descriptor.id]
+    soundbank.emit('change', descriptor)
+  }
+
   soundbank.getDescriptor = function(id){
     return descriptors[id] || {id: String(id)}
   }
