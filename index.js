@@ -56,6 +56,7 @@ module.exports = function(audioContext){
   }
 
   soundbank.triggerOn = function(id, at){
+    at = at || audioContext.currentTime
     soundbank.choke(id, at)
 
     var slot = slots[id]
@@ -75,6 +76,7 @@ module.exports = function(audioContext){
   }
 
   soundbank.triggerOff = function(id, at){
+    at = at || audioContext.currentTime
     var slot = slots[id]
     if (slot){
       slot.triggerOff(at)
@@ -83,6 +85,7 @@ module.exports = function(audioContext){
   }
 
   soundbank.choke = function(id, at){
+    at = at || audioContext.currentTime
     var slot = slots[id]
     if (slot){
       slot.choke(at)
