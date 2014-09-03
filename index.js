@@ -1,6 +1,10 @@
-var Slot = require('audio-slot')
 var ActiveList = require('./lib/active_list')
 var SlotReferences = require('./lib/slot_references')
+
+var slotTypes = {
+  default: require('audio-slot'),
+  modulator: require('audio-slot/modulator')
+}
 
 var createMeddler = require('audio-meddle')
 
@@ -11,9 +15,13 @@ var IAC = require('inheritable-audio-context')
 ////////////////////////////////////////////////
 
 
-module.exports = function(audioContext){
+module.exports = function(parentAudioContext){
+
+  var audioContext = IAC(parentAudioContext, true)
+  audioContext.inputs = {}
 
   var soundbank = audioContext.createGain()
+  soundbank._context = audioContext
 
   var output = audioContext.createGain()
   var meddler = createMeddler(audioContext)
@@ -28,6 +36,7 @@ module.exports = function(audioContext){
 
   var slots = {}
   var descriptors = {}
+  var resolvedDescriptors = {}
   var slotReferences = SlotReferences()
 
   soundbank.update = function(descriptor){
@@ -68,8 +77,9 @@ module.exports = function(audioContext){
 
       slot.triggerOn(at)
 
-      if (slot.descriptor.inputMode === 'meddler'){
-        meddler.start(slot.descriptor.id, at)
+      var descriptor = resolvedDescriptors[id]
+      if (descriptor.inputMode === 'meddler'){
+        meddler.start(descriptor.id, at)
       }
 
     }
@@ -80,7 +90,7 @@ module.exports = function(audioContext){
     var slot = slots[id]
     if (slot){
       slot.triggerOff(at)
-      meddler.stop(slot.descriptor.id, at)
+      meddler.stop(id, at)
     }
   }
 
@@ -99,10 +109,17 @@ module.exports = function(audioContext){
   }
 
   function refreshSlot(id){
+
+    var oldDescriptor = resolvedDescriptors[id] || {}
     var descriptor = descriptors[id]
     var slot = slots[id]
+    var ctor = slotTypes[descriptor.node] || slotTypes['default']
 
-    var context = IAC(audioContext, true)
+    if (descriptor._deleted){
+      ctor = null
+    }
+
+    var context = IAC(audioContext)
     context.params = descriptor
     context.descriptors = descriptors
     context.slotReferences = []
@@ -110,22 +127,49 @@ module.exports = function(audioContext){
     descriptor = applyProviders(context, descriptor)
     slotReferences.update(id, context.slotReferences)
 
-    if (slot){ // update slot
-      var oldDescriptor = slot.descriptor
-      slot.update(descriptor)
+    // update meddler
+    if (oldDescriptor.inputMode === 'meddler' && descriptor.inputMode !== 'meddler'){
+      meddler.remove(id)
+    } else if (oldDescriptor.inputMode !== 'meddler' && descriptor.inputMode == 'meddler'){
+      meddler.add(id, getInput(id))
+    }
 
-      if (oldDescriptor.output != descriptor.output || oldDescriptor.inputMode != descriptor.inputMode){
-        setOutput(audioContext, output, meddler, slot, descriptor, slots)
+    // update existing slot
+    if (slot){
+      if (!ctor || !(slot instanceof ctor)){
+
+        if (audioContext.inputs[id]){
+          audioContext.inputs[id].disconnect()
+        }
+
+        slot.update({})
+        slot.disconnect()
+        slot = slots[id] = null
+
+      } else {
+
+        if (oldDescriptor.output != descriptor.output || oldDescriptor.inputMode != descriptor.inputMode){
+          updateOutput(slot, descriptor)
+        }
+
+        slot.update(descriptor)
+
+      }
+    } 
+
+    // create new slot
+    if (!slot && ctor) {
+      slot = slots[id] = ctor(audioContext, descriptor)
+
+      if (audioContext.inputs[id] && slot.input){
+        audioContext.inputs[id].connect(slot.input)
       }
 
-    } else { // create slot
-      slot = slots[descriptor.id] = Slot(audioContext, descriptor)
-      meddler.add(descriptor.id, slot)
-      slot.connect(output)
-      setOutput(audioContext, output, meddler, slot, descriptor, slots)
+      updateOutput(slot, descriptor)
     }
 
     // emit with providers
+    resolvedDescriptors[id] = descriptor
     soundbank.emit('refresh', descriptor)
   }
 
@@ -133,29 +177,35 @@ module.exports = function(audioContext){
     return descriptors[id]
   }
 
-  return soundbank
-}
-
-function setOutput(audioContext, output, meddler, slot, descriptor, slots){
-  slot.disconnect()
-  if (descriptor.inputMode === 'meddler'){
-    // do nothing, output will be patched on trigger
-  } else if (!('output' in descriptor) || descriptor.output === true || descriptor.output == ''){
-    slot.connect(output)
-  } else if (descriptor.output) {
-    if (descriptor.output === 'meddler'){
-      slot.connect(meddler)
-    } else {
-      var destinationSlot = slots[descriptor.output]
-      if (!destinationSlot){ // create destination slot
-        destinationSlot = slots[descriptor.output] = Slot(audioContext, {})
-        meddler.add(descriptor.output, destinationSlot)
-        setOutput(audioContext, output, meddler, destinationSlot, {}, slots)
-      }
-      slot.connect(destinationSlot)
+  function updateOutput(slot, descriptor){
+    slot.disconnect()
+    if (descriptor.inputMode === 'meddler'){
+      // do nothing, output will be patched on trigger
+    } else if (!('output' in descriptor) || descriptor.output === true || descriptor.output == ''){
+      slot.connect(output)
+    } else if (Array.isArray(descriptor.output)){
+      descriptor.output.forEach(function(output){
+        slot.connect(getInput(output))
+      })
+    } else if (typeof descriptor.output === 'string'){
+      slot.connect(getInput(descriptor.output))
     }
-
   }
+
+  function getInput(id){
+    if (!audioContext.inputs[id]){
+      audioContext.inputs[id] = audioContext.createGain()
+
+      var slot = slots[id]
+      if (slot && slot.input){
+        audioContext.inputs[id].connect(slot.input)
+      }
+
+    }
+    return audioContext.inputs[id]
+  }
+
+  return soundbank
 }
 
 function merge(){
