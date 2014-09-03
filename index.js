@@ -18,13 +18,17 @@ var IAC = require('inheritable-audio-context')
 module.exports = function(parentAudioContext){
 
   var audioContext = IAC(parentAudioContext, true)
-  audioContext.inputs = {}
 
   var soundbank = audioContext.createGain()
   soundbank._context = audioContext
 
   var output = audioContext.createGain()
   var meddler = createMeddler(audioContext)
+
+  audioContext.inputs = {
+    'meddler': meddler
+  }
+
 
   meddler.connect(output)
   output.connect(soundbank)
@@ -34,7 +38,7 @@ module.exports = function(parentAudioContext){
 
   var activeGroups = ActiveList()
 
-  var slots = {}
+  var slots = soundbank._slots = {}
   var descriptors = {}
   var resolvedDescriptors = {}
   var slotReferences = SlotReferences()
@@ -127,13 +131,6 @@ module.exports = function(parentAudioContext){
     descriptor = applyProviders(context, descriptor)
     slotReferences.update(id, context.slotReferences)
 
-    // update meddler
-    if (oldDescriptor.inputMode === 'meddler' && descriptor.inputMode !== 'meddler'){
-      meddler.remove(id)
-    } else if (oldDescriptor.inputMode !== 'meddler' && descriptor.inputMode == 'meddler'){
-      meddler.add(id, getInput(id))
-    }
-
     // update existing slot
     if (slot){
       if (!ctor || !(slot instanceof ctor)){
@@ -145,6 +142,7 @@ module.exports = function(parentAudioContext){
         slot.update({})
         slot.disconnect()
         slot = slots[id] = null
+        meddler.remove(id)
 
       } else {
 
@@ -166,6 +164,7 @@ module.exports = function(parentAudioContext){
       }
 
       updateOutput(slot, descriptor)
+      meddler.add(id, slot)
     }
 
     // emit with providers
